@@ -4,7 +4,6 @@ const request = require('request')
 const checksum = require('checksum')
 const Zip = require('adm-zip')
 const child = require('child_process')
-const { exception } = require('console')
 
 let counter = -1;
 
@@ -26,12 +25,15 @@ class TrophyUtils
 
     async downloadUpdate(json)
     {
+        this.launcher.emit('debug', '[MLT][U] Begin check/download task')
+
         counter = 0
         const collections = []
         
 
         //download jar, natives, artifacts(libs), assets, (addons?)
 
+        this.launcher.emit('debug', '[MLT][P] Preparing to check-download MINECRAFT.JAR')
         const dirVersion = path.resolve(
             path.join(
                 this.launcher.launchOptions.launcherPath,
@@ -60,16 +62,17 @@ class TrophyUtils
         }*/
         const artifact = json.downloads.client
         
-        artifact.path = this.launcher.launchOptions.version.number  + '.jar'
+        artifact.path = this.launcher.launchOptions.version.number + '.jar'
 
         collections.version = await this.downloadUpdateAA([artifact], 'artifacts-jar', dirVersion)
+        this.launcher.emit('debug', '[MLT][P] Downloaded MINECRAFT.JAR')
 
 
 
         
 
 
-
+        this.launcher.emit('debug', '[MLT][P] Preparing to check-download NATIVES')
         const dirNatives = path.resolve(path.join(this.launcher.launchOptions.launcherPath, 'natives', json.id))
 
         if (!fs.existsSync(dirNatives) || !fs.readdirSync(dirNatives).length)
@@ -105,7 +108,7 @@ class TrophyUtils
         collections.natives = await this.downloadUpdateAA(await natives(), 'natives', dirNatives, true)
 
 
-        
+        this.launcher.emit('debug', '[MLT][P] Preparing to check-download LIBRARIES')
         const dirLibraries = path.resolve(path.join(this.launcher.launchOptions.launcherPath, 'libraries'))
 
         const libraries = async () => 
@@ -134,7 +137,7 @@ class TrophyUtils
 
 
 
-
+        this.launcher.emit('debug', '[MLT][P] Preparing to check-download ASSETS')
         const dirAssets = path.resolve(path.join(this.launcher.launchOptions.launcherPath, 'assets'))
 
         if (!fs.existsSync(dirAssets) || !fs.readdirSync(dirAssets).length)
@@ -192,6 +195,8 @@ class TrophyUtils
             },
             collections: collections
         }
+
+        this.launcher.emit('debug', '[MLT][U] Ended check/download task')
         return ret
     }
 
@@ -229,7 +234,6 @@ class TrophyUtils
             {
                 try
                 {
-                    this.launcher.emit('debug', file_path)
                     new Zip(file_path).extractAllTo(directory, true)
                     //fs.unlinkSync(file_path) //temp rel...
                 }
@@ -268,7 +272,9 @@ class TrophyUtils
         {
             let action = (rule.action == 'allow') // true/false
             if(rule.os)
-            if(rule.os.name == os) allow = action
+            { 
+                if(rule.os.name == os) allow = action
+            }
             else allow = action
         })
         else allow = true
@@ -293,7 +299,7 @@ class TrophyUtils
 
     //to-do: refactor
     //copy paste part
-    downloadAsync(url, directory, name, retry, type)
+    async downloadAsync(url, directory, name, retry, type)
     {
         return new Promise(resolve => {
             fs.mkdirSync(directory, { recursive: true })
